@@ -68,11 +68,13 @@ async function main(): Promise<void> {
     },
   };
 
+  let startupReport: InboxReport | undefined;
   // Step 0 gate: refuse to start unless the configured Inbox verifies on chain.
   if (cfg.skipInboxVerification) {
     log.error('UNSAFE_SKIP_INBOX_VERIFICATION=1 — Inbox NOT verified. Never use this in production.');
   } else {
     const report = await verifyInbox(publicClient, verifyOpts);
+    startupReport = report;
     printInboxReport(report);
     if (!report.ok) process.exit(2);
   }
@@ -130,6 +132,10 @@ async function main(): Promise<void> {
       apiKey: cfg.apiKey ? 'required' : 'disabled',
     });
   });
+  if (startupReport) {
+    monitor.lastInboxReport = startupReport;
+    monitor.lastInboxCheckAt = Date.now();
+  }
   monitor.start();
   await monitor.checkRelayerBalance().catch(() => undefined);
   if (monitor.relayerBalance !== undefined) log.info('relayer balance', { hype: formatEther(monitor.relayerBalance) });
