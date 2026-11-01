@@ -49,6 +49,17 @@ const [balance, nonce, block] = await Promise.all([
   l2.getTransactionCount({ address: account.address, blockTag: 'pending' }),
   l2.getBlock({ blockTag: 'latest' }),
 ]);
+const relayerKey = process.env.RELAYER_PRIVATE_KEY as Hex | undefined;
+if (relayerKey && /^0x[0-9a-fA-F]{64}$/.test(relayerKey) && privateKeyToAccount(relayerKey).address === account.address) {
+  console.error(`\n${account.address} is the RELAYER wallet (HyperEVM gas payer), not an L2 test wallet.`);
+  console.error('Use a separate wallet that holds HYPE on Elysium L2 for TEST_L2_PRIVATE_KEY.');
+  process.exit(1);
+}
+if (balance < amount + parseEther('0.0005')) {
+  console.error(`\nTest wallet ${account.address} has ${formatEther(balance)} HYPE on Elysium L2 (chain ${chainId}).`);
+  console.error(`It needs at least ${formatEther(amount + parseEther('0.0005'))} HYPE ON L2 (not on HyperEVM) for this test. Nothing was sent.`);
+  process.exit(1);
+}
 const baseFee = block.baseFeePerGas ?? (await l2.getGasPrice());
 const maxFeePerGas = baseFee * 2n;
 const gas = await l2.estimateGas({ account: account.address, to: account.address, value: amount });
