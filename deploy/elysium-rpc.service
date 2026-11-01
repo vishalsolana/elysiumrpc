@@ -5,8 +5,8 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=elysium
-Group=elysium
+User=elysiumrpc
+Group=elysiumrpc
 WorkingDirectory=/opt/elysium-rpc
 EnvironmentFile=/etc/elysium-rpc.env
 ExecStart=/usr/bin/node /opt/elysium-rpc/dist/src/index.js

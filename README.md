@@ -105,11 +105,11 @@ The server accepts single and batch requests. If `API_KEY` is set, send it as `x
 ## Deploy (systemd)
 
 ```bash
-sudo useradd --system --home /opt/elysium-rpc elysium
+sudo useradd --system --home /opt/elysium-rpc elysiumrpc
 sudo mkdir -p /opt/elysium-rpc/data && sudo cp -r dist package*.json /opt/elysium-rpc/
 (cd /opt/elysium-rpc && sudo npm ci --omit=dev)
-sudo install -m 600 -o elysium .env /etc/elysium-rpc.env
-sudo chown -R elysium:elysium /opt/elysium-rpc
+sudo install -m 600 -o elysiumrpc .env /etc/elysium-rpc.env
+sudo chown -R elysiumrpc:elysiumrpc /opt/elysium-rpc
 sudo cp deploy/elysium-rpc.service /etc/systemd/system/
 sudo systemctl daemon-reload && sudo systemctl enable --now elysium-rpc
 journalctl -u elysium-rpc -f
