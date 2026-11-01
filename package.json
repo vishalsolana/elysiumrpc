@@ -1,0 +1,29 @@
+{
+  "name": "elysium-rpc-relay",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Private JSON-RPC proxy for Elysium (chain 99901) that relays eth_sendRawTransaction through the delayed Inbox on HyperEVM",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/src/index.js",
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "verify-inbox": "tsx scripts/verify-inbox.ts",
+    "relay-test": "tsx scripts/relay-test.ts",
+    "find-inbox": "tsx scripts/find-inbox.ts"
+  },
+  "dependencies": {
+    "viem": "^2.57.14"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}

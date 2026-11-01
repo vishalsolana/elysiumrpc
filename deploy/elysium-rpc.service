@@ -1,0 +1,38 @@
+[Unit]
+Description=Elysium (99901) private RPC + Inbox transaction relay
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=elysium
+Group=elysium
+WorkingDirectory=/opt/elysium-rpc
+EnvironmentFile=/etc/elysium-rpc.env
+ExecStart=/usr/bin/node /opt/elysium-rpc/dist/src/index.js
+Restart=always
+RestartSec=5
+# Exit code 2 = Inbox verification failed: don't hammer restarts, an operator must look.
+RestartPreventExitStatus=2
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=elysium-rpc
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/elysium-rpc/data
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=false
+CapabilityBoundingSet=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
