@@ -51,9 +51,13 @@ const [balance, nonce, block] = await Promise.all([
 ]);
 const relayerKey = process.env.RELAYER_PRIVATE_KEY as Hex | undefined;
 if (relayerKey && /^0x[0-9a-fA-F]{64}$/.test(relayerKey) && privateKeyToAccount(relayerKey).address === account.address) {
-  console.error(`\n${account.address} is the RELAYER wallet (HyperEVM gas payer), not an L2 test wallet.`);
-  console.error('Use a separate wallet that holds HYPE on Elysium L2 for TEST_L2_PRIVATE_KEY.');
-  process.exit(1);
+  if (process.env.ALLOW_RELAYER_AS_TEST_WALLET === '1') {
+    console.log(`[${t()}] NOTE: testing with the relayer wallet itself (ALLOW_RELAYER_AS_TEST_WALLET=1)`);
+  } else {
+    console.error(`\n${account.address} is the RELAYER wallet (HyperEVM gas payer), not an L2 test wallet.`);
+    console.error('Use a separate wallet that holds HYPE on Elysium L2, or set ALLOW_RELAYER_AS_TEST_WALLET=1 to test with it anyway.');
+    process.exit(1);
+  }
 }
 if (balance < amount + parseEther('0.0005')) {
   console.error(`\nTest wallet ${account.address} has ${formatEther(balance)} HYPE on Elysium L2 (chain ${chainId}).`);
