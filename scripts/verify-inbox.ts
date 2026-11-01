@@ -25,7 +25,7 @@ const relayer: Address = process.env.RELAYER_PRIVATE_KEY
   ? privateKeyToAccount(process.env.RELAYER_PRIVATE_KEY as `0x${string}`).address
   : (process.env.RELAYER_ADDRESS as Address | undefined) ?? '0x0000000000000000000000000000000000000001';
 
-const client = createPublicClient({ chain: hyperEvmChain(chainId, rpc), transport: http(rpc, { timeout: 15_000 }) });
+const client = createPublicClient({ chain: hyperEvmChain(chainId, rpc), transport: http(rpc, { timeout: 20_000, retryCount: 6, retryDelay: 1000 }) });
 const actual = await client.getChainId();
 if (actual !== chainId) {
   console.error(`HyperEVM RPC reports chain ${actual}, expected ${chainId}`);
