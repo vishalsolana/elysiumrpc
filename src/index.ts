@@ -22,6 +22,8 @@ export function printInboxReport(r: InboxReport): void {
     delayedMessageCount: r.delayedMessageCount,
     totalDelayedMessagesRead: r.totalDelayedMessagesRead,
     delayedBacklog: r.delayedBacklog,
+    l2DelayedRead: r.l2DelayedRead,
+    l2Backlog: r.l2Backlog,
     paused: r.paused,
     allowListEnabled: r.allowListEnabled,
     relayerAllowed: r.relayerAllowed,
@@ -47,6 +49,10 @@ async function main(): Promise<void> {
     throw new Error(`HYPEREVM_RPC_URL reports chain ${parentChainId}, expected ${cfg.hyperEvmChainId}`);
   }
 
+  const upstream = new UpstreamPool(cfg.upstreamRpcUrls, cfg.upstreamTimeoutMs);
+  const l2ChainId = Number(await upstream.call<string>('eth_chainId'));
+  if (l2ChainId !== cfg.l2ChainId) throw new Error(`upstream reports chain ${l2ChainId}, expected ${cfg.l2ChainId}`);
+
   const verifyOpts = {
     inbox: cfg.inbox,
     relayer: account.address,
@@ -54,6 +60,12 @@ async function main(): Promise<void> {
     expectedBridge: cfg.expectedBridge,
     expectedRollup: cfg.expectedRollup,
     expectedSequencerInbox: cfg.expectedSequencerInbox,
+    // Nitro L2 block header `nonce` = delayed messages the sequencer has included on L2.
+    getL2DelayedRead: async () => {
+      const b = await upstream.call<{ nonce?: string } | null>('eth_getBlockByNumber', ['latest', false]);
+      if (!b?.nonce) throw new Error('L2 block has no nonce');
+      return BigInt(b.nonce);
+    },
   };
 
   // Step 0 gate: refuse to start unless the configured Inbox verifies on chain.
@@ -64,10 +76,6 @@ async function main(): Promise<void> {
     printInboxReport(report);
     if (!report.ok) process.exit(2);
   }
-
-  const upstream = new UpstreamPool(cfg.upstreamRpcUrls, cfg.upstreamTimeoutMs);
-  const l2ChainId = Number(await upstream.call<string>('eth_chainId'));
-  if (l2ChainId !== cfg.l2ChainId) throw new Error(`upstream reports chain ${l2ChainId}, expected ${cfg.l2ChainId}`);
 
   const inflight = new InFlightStore(cfg.stateFile);
   inflight.load();

@@ -5,6 +5,8 @@ export const inboxAbi = parseAbi([
   'function bridge() view returns (address)',
   'function sequencerInbox() view returns (address)',
   'function paused() view returns (bool)',
+  // nitro-contracts AbsInbox: `bool public allowListEnabled` (older/forked builds may expose isAllowListEnabled)
+  'function allowListEnabled() view returns (bool)',
   'function isAllowListEnabled() view returns (bool)',
   'function isAllowed(address) view returns (bool)',
   'function maxDataSize() view returns (uint256)',
@@ -45,8 +47,12 @@ export interface InboxReport {
   rollupChainId?: bigint;
   delayedMessageCount?: bigint;
   totalDelayedMessagesRead?: bigint;
-  /** delayedMessageCount − totalDelayedMessagesRead: delayed messages not yet included by the sequencer. */
+  /** delayedMessageCount − totalDelayedMessagesRead: delayed messages not yet in a batch posted to HyperEVM. */
   delayedBacklog?: bigint;
+  /** Delayed messages the sequencer has included on L2 (Nitro L2 block header `nonce`). */
+  l2DelayedRead?: bigint;
+  /** delayedMessageCount − l2DelayedRead: delayed messages the sequencer has NOT included on L2 yet. */
+  l2Backlog?: bigint;
   paused?: boolean;
   allowListEnabled?: boolean;
   relayerAllowed?: boolean;
@@ -61,6 +67,8 @@ export interface VerifyOptions {
   expectedBridge?: Address;
   expectedRollup?: Address;
   expectedSequencerInbox?: Address;
+  /** Optional: returns the L2 head's delayed-messages-read count (Nitro block header `nonce`). */
+  getL2DelayedRead?: () => Promise<bigint>;
 }
 
 const eq = (a?: Address, b?: Address) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
@@ -90,10 +98,9 @@ export async function verifyInbox(client: PublicClient, o: VerifyOptions): Promi
   const inboxC = { address: o.inbox, abi: inboxAbi } as const;
   r.bridge = await read('inbox.bridge()', client.readContract({ ...inboxC, functionName: 'bridge' }));
   r.paused = await read('inbox.paused()', client.readContract({ ...inboxC, functionName: 'paused' }));
-  r.allowListEnabled = await read(
-    'inbox.isAllowListEnabled()',
-    client.readContract({ ...inboxC, functionName: 'isAllowListEnabled' }),
-  );
+  r.allowListEnabled =
+    (await optRead(client.readContract({ ...inboxC, functionName: 'allowListEnabled' }))) ??
+    (await read('inbox.allowListEnabled() / isAllowListEnabled()', client.readContract({ ...inboxC, functionName: 'isAllowListEnabled' })));
   r.maxDataSize = await optRead(client.readContract({ ...inboxC, functionName: 'maxDataSize' }));
 
   if (r.paused) r.problems.push('Inbox is paused');
@@ -140,12 +147,21 @@ export async function verifyInbox(client: PublicClient, o: VerifyOptions): Promi
     if (mtv) r.forceInclusionDelay = { blocks: mtv[0], seconds: mtv[2] };
     if (r.delayedMessageCount !== undefined && r.totalDelayedMessagesRead !== undefined) {
       r.delayedBacklog = r.delayedMessageCount - r.totalDelayedMessagesRead;
-      if (r.delayedBacklog > 50n) {
-        r.warnings.push(
-          `${r.delayedBacklog} delayed messages are not yet read by the sequencer — inclusion may be slow or stalled`,
-        );
-      }
     }
+  }
+
+  if (o.getL2DelayedRead && r.delayedMessageCount !== undefined) {
+    r.l2DelayedRead = await optRead(o.getL2DelayedRead());
+    if (r.l2DelayedRead !== undefined) r.l2Backlog = r.delayedMessageCount - r.l2DelayedRead;
+  }
+  if (r.l2Backlog !== undefined) {
+    if (r.l2Backlog > 50n) {
+      r.warnings.push(`${r.l2Backlog} delayed messages are not yet included on L2 by the sequencer — inclusion may be slow or stalled`);
+    }
+  } else if (r.delayedBacklog !== undefined && r.delayedBacklog > 50n) {
+    r.warnings.push(
+      `${r.delayedBacklog} delayed messages are not yet in a posted batch (L2-side count unavailable; may just be batch-posting lag)`,
+    );
   }
 
   if (o.expectedBridge && !eq(o.expectedBridge, r.bridge)) r.problems.push(`bridge ${r.bridge} != ELYSIUM_BRIDGE ${o.expectedBridge}`);

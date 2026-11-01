@@ -141,6 +141,7 @@ export class RpcHandler {
         address: this.d.inbox,
         bridge: m?.lastInboxReport?.bridge,
         delayedBacklog: m?.lastInboxReport?.delayedBacklog?.toString(),
+        l2DelayedBacklog: m?.lastInboxReport?.l2Backlog?.toString(),
         lastCheckedAt: m?.lastInboxCheckAt ? new Date(m.lastInboxCheckAt).toISOString() : null,
       },
       inflight: {

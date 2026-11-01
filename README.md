@@ -39,7 +39,7 @@ npm test
   - `sequencerInbox.bridge()`, which must point back at the bridge
   - `sequencerInbox.totalDelayedMessagesRead()`, giving the **delayed backlog**
   - `maxTimeVariation()`, giving the force-inclusion delay
-  - `paused()`, `maxDataSize()` and `isAllowListEnabled()`
+  - `paused()`, `maxDataSize()` and `allowListEnabled()` (falls back to `isAllowListEnabled()`)
 
   If the allow-list is enabled, it also checks `isAllowed(relayer)`. A paused Inbox, or an enabled allow-list
   without our relayer on it, is a **hard failure**. Exit code 0 means verified; 2 means not verified.
